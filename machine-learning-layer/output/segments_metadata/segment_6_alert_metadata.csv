@@ -1,0 +1,3 @@
+day,trans_type,amount,nameOrig,oldbalanceOrg,nameDest,oldbalanceDest,accountType,isFraud,isFlaggedFraud
+9,WIRE_IN,994453.2,C1121789613,1437370.87,C254839817,194812.76,FOREIGN,1,0
+11,WIRE_IN,1933920.8,C1706582969,0,C461905695,1283762.85,FOREIGN,1,0

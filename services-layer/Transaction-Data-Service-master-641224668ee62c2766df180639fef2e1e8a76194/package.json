@@ -1,0 +1,23 @@
+{
+	"name": "NodejsStarterApp",
+	"version": "0.0.1",
+	"private": true,
+	"scripts": {
+		"start": "node app.js"
+	},
+	"dependencies": {
+		"express": "4.15.x",
+		"cfenv": "1.0.x",
+		"node-random-name":"1.0.1",
+		"random-number":"0.0.9",
+		"json2xls":"0.1.2",
+		"fs":"0.0.1-security",
+		"request":"2.83.0",
+		"request-promise":"4.2.2",
+		"vigenere": "1.0.2"
+	},
+	"repository": {},
+	"engines": {
+		"node": "6.x"
+	}
+}
