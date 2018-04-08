@@ -4,10 +4,14 @@ import numpy as np
 import csv
 from random import randint
 
+import sys
+sys.path.append('../..')
+import config
+
 ###########################################################################
 #write secondary file
 ###########################################################################
-data_path = "./../../datasets/dataset_primary.csv"
+data_path = config.secondaryDataGenerator.data_path
 
 print("Reading dataset")
 X = pandas.read_csv(data_path, sep=",",header=0)
@@ -63,6 +67,7 @@ enititesDict = {}
 def getSecRow(entity):
 	return [entity,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
+modified_primary_data = []
 for i in range(X.shape[0]):
 	source_entity = X[i,nameOrig]
 	dest_entity = X[i,nameDest]
@@ -192,6 +197,7 @@ for i in range(X.shape[0]):
 	outgoingForDest = incomingForSource
 	outgoingForSource = incomingForDest
 
+	#Assumming the steps are in order
 	if X[i,step]<=30:
 		enititesDict[source_entity]['day30Bal'] = transferAmountSource+X[i,oldbalanceOrg]
 		enititesDict[dest_entity]['day30Bal'] = transferAmountDest+X[i,oldbalanceDest]
@@ -304,20 +310,30 @@ for i in range(X.shape[0]):
 	csv_dataset_secondary[dest_pos][incoming_foreign_count_90] = enititesDict[dest_entity]['countIncomingForeign90']
 	csv_dataset_secondary[dest_pos][outgoing_foreign_count_90] = enititesDict[dest_entity]['countOutgoingForeign90'] 
 
+	csv_dataset_secondary[dest_pos][isFraudSec] = csv_dataset_secondary[dest_pos][isFraudSec] or X[i,isFraud] 
 
-with open("./../../datasets/dataset_secondary.csv", "w") as f:
+	#add extra columns in the primary dataset
+	mod_row = []
+	for x in X[i]:
+		mod_row.append(x)
+	for el in csv_dataset_secondary[source_pos][1:-1]:
+		mod_row.append(el)
+	for el in csv_dataset_secondary[dest_pos][1:-1]:
+		mod_row.append(el)
+	modified_primary_data.append(mod_row)
+
+#write secondary data
+with open(config.secondaryDataGenerator.out_path, "w") as f:
     writer = csv.writer(f)
     writer.writerows(csv_dataset_secondary)
 
 #this is to remove the newlines
-with open("./../../datasets/dataset_secondary.csv", "r") as f:
+with open(config.secondaryDataGenerator.out_path, "r") as f:
 	lines = f.readlines()
-	lines = [line for i,line in enumerate(lines) if i%2==0]
+	lines = [line for i,line in enumerate(lines)]
 
-
-
-with open("./../../datasets/dataset_secondary.csv","w") as f:
-	header = "entity,incoming_domestic_amount_30,incoming_domestic_amount_60,incoming_domestic_amount_90,\
+with open(config.secondaryDataGenerator.out_path,"w") as f:
+	header = """entity,incoming_domestic_amount_30,incoming_domestic_amount_60,incoming_domestic_amount_90,\
 outgoing_domestic_amount_30,outgoing_domestic_amount_60,outgoing_domestic_amount_90,\
 incoming_foreign_amount_30,incoming_foreign_amount_60,incoming_foreign_amount_90,\
 outgoing_foreign_amount_30,outgoing_foreign_amount_60,outgoing_foreign_amount_90,\
@@ -326,5 +342,38 @@ outgoing_domestic_count_30,outgoing_domestic_count_60,outgoing_domestic_count_90
 incoming_foreign_count_30,incoming_foreign_count_60,incoming_foreign_count_90,\
 outgoing_foreign_count_30,outgoing_foreign_count_60,outgoing_foreign_count_90,\
 balance_difference_30,balance_difference_60,balance_difference_90,\
-isFraud"
+isFraud"""
+	f.write(header + "\n" + "".join(lines))
+
+
+#write modified primary data
+with open(config.secondaryDataGenerator.out_path_primary, "w") as f:
+    writer = csv.writer(f)
+    writer.writerows(modified_primary_data)
+
+#this is to remove the newlines
+with open(config.secondaryDataGenerator.out_path_primary, "r") as f:
+	lines = f.readlines()
+	lines = [line for i,line in enumerate(lines)]
+
+with open(config.secondaryDataGenerator.out_path_primary,"w") as f:
+	header = """step,trans_type,amount,nameOrig,oldbalanceOrg,nameDest,oldbalanceDest,accountType,\
+isFraud,isFlaggedFraud,incoming_domestic_amount_30_src,incoming_domestic_amount_60_src,incoming_domestic_amount_90_src,\
+outgoing_domestic_amount_30_src,outgoing_domestic_amount_60_src,outgoing_domestic_amount_90_src,\
+incoming_foreign_amount_30_src,incoming_foreign_amount_60_src,incoming_foreign_amount_90_src,\
+outgoing_foreign_amount_30_src,outgoing_foreign_amount_60_src,outgoing_foreign_amount_90_src,\
+incoming_domestic_count_30_src,incoming_domestic_count_60_src,incoming_domestic_count_90_src,\
+outgoing_domestic_count_30_src,outgoing_domestic_count_60_src,outgoing_domestic_count_90_src,\
+incoming_foreign_count_30_src,incoming_foreign_count_60_src,incoming_foreign_count_90_src,\
+outgoing_foreign_count_30_src,outgoing_foreign_count_60_src,outgoing_foreign_count_90_src,\
+balance_difference_30_src,balance_difference_60_src,balance_difference_90_src,\
+incoming_domestic_amount_30_dst,incoming_domestic_amount_60_dst,incoming_domestic_amount_90_dst,\
+outgoing_domestic_amount_30_dst,outgoing_domestic_amount_60_dst,outgoing_domestic_amount_90_dst,\
+incoming_foreign_amount_30_dst,incoming_foreign_amount_60_dst,incoming_foreign_amount_90_dst,\
+outgoing_foreign_amount_30_dst,outgoing_foreign_amount_60_dst,outgoing_foreign_amount_90_dst,\
+incoming_domestic_count_30_dst,incoming_domestic_count_60_dst,incoming_domestic_count_90_dst,\
+outgoing_domestic_count_30_dst,outgoing_domestic_count_60_dst,outgoing_domestic_count_90_dst,\
+incoming_foreign_count_30_dst,incoming_foreign_count_60_dst,incoming_foreign_count_90_dst,\
+outgoing_foreign_count_30_dst,outgoing_foreign_count_60_dst,outgoing_foreign_count_90_dst,\
+balance_difference_30_dst,balance_difference_60_dst,balance_difference_90"""
 	f.write(header + "\n" + "".join(lines))

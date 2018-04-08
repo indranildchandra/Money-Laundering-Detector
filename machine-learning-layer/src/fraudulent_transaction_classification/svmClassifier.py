@@ -11,10 +11,15 @@ import pandas
 import csv
 
 from os import walk
+import os
 
 import pickle
 
-data_path = "./../../datasets/dataset_primary_segmented.csv"
+import sys
+sys.path.append('../..')
+import config
+
+data_path = config.segmentGenerator.out_path
 
 dataMat = pandas.read_csv(data_path, sep=",",header=0)
 data = dataMat.as_matrix()
@@ -27,7 +32,7 @@ def writeArrayToCsv(arr,file):
 	#this is to remove the newlines
 	with open(file, "r") as f:
 		lines = f.readlines()
-		lines = [line for i,line in enumerate(lines) if i%2==0]
+		lines = [line for i,line in enumerate(lines)]
 
 	with open(file,"w") as f:
 		header = "step,trans_type,amount,nameOrig,oldbalanceOrg,nameDest,oldbalanceDest,accountType,isFraud,isFlaggedFraud"
@@ -41,20 +46,19 @@ for i in range(data.shape[0]):
 	segData[segment].append(data[i,1:])
 
 for segment, data in segData.items():
-	file = "./../../datasets/segments/"+segment+".csv"
+	file = os.path.join(config.segmentGenerator.segment_path,segment+".csv")
 	writeArrayToCsv(data,file)
 
-for (dirpath, dirnames, filenames) in walk("./../../datasets/segments"):
+for file in os.listdir(config.segmentGenerator.segment_path):
 	for filenum, file in enumerate(filenames):
-		data_path = "./../../datasets/segments/" + file
+		data_path = os.path.join(config.segmentGenerator.segment_path,file)
 		print(data_path)
 		dfX = pandas.read_csv(data_path, sep=",",header=0)
 		data = dfX.as_matrix()
 
 		X = data[:,:-2]
 		y = data[:,-2]
-		if 1 not in y:
-			continue
+
 
 		#remove null values from categorical columns specifically
 		def removeNulls(data, col):
@@ -64,43 +68,68 @@ for (dirpath, dirnames, filenames) in walk("./../../datasets/segments"):
 
 		cat_cols = [1,3,5,7]
 		# removeNulls(X,5)
-		#change the original categorical data to numbers for input to model
-		for i in cat_cols:
-			le = LabelEncoder()
-			le = le.fit(X[:,i])
-			X[:,i] = le.transform(X[:,i])
+		#TODO: during actual inference le will have to be precomputed and stores somewhere
+		le = LabelEncoder()
+		le = le.fit(X[:,i])
 
-		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
-		while 1 not in y_train:
-			print("in while")
-			X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+		# removeNulls(X,5)
+		def removeLabels(X):
+			#change the original categorical data to numbers for input to model
+			for i in cat_cols:
+				X[:,i] = le.transform(X[:,i])
 
 
-		
-		clf = pickle.load(open("./../../models/fraud_classifier/"+file.split(".")[0]+".dat", "rb"))
+		if config.train:
+			if 1 not in y:
+				continue
 
-		# clf = SVC() #uncomment for training
-		# clf.fit(X_train, np.ndarray.flatten(y_train.astype(int))) #uncomment for training
+			data_path = os.path.join(config.segmentGenerator.train_segment_path,file)
+			# print(data_path)
+			dfX = pandas.read_csv(data_path, sep=",",header=0)
+			data_train = dfX.as_matrix()
 
-		# pickle.dump(clf, open("./../../models/fraud_classifier/"+file.split(".")[0]+".dat", "wb"))
-		# print("models saved in models folder")
-		
-		preds = clf.predict(X_test)		
-		print(y_test,preds)
-		f1 = f1_score(y_test.astype(int), preds.astype(int))
-		print("f1 score")
-		print(f1)
+			X = removeLabels(data_train[:-1])
+			y = data_train[-1]
 
-		tested = np.concatenate((X_test,np.expand_dims(y_test,axis=1),np.expand_dims(preds,axis=1)), axis=1)
-		with open("./../../testCases/testSvmClassifier_"+file.split(".")[0]+".csv", "w") as f:
-			writer = csv.writer(f)
-			writer.writerows(tested)
+			clf = SVC()
+			clf.fit(X, np.ndarray.flatten(y.astype(int))) #uncomment for training
 
-			#this is to remove the newlines
-			with open("./../../testCases/testSvmClassifier_"+file.split(".")[0]+".csv", "r") as f:
-				lines = f.readlines()
-				lines = [line for i,line in enumerate(lines) if i%2==0]
+			pickle.dump(clf, open(os.path.join(config.svmClassifier.model_path,file.split(".")[0]+".dat"), "wb"))
+			print("models saved in models folder")
+		else:
+			data_path = os.path.join(config.segmentGenerator.test_segment_path,file)
+			# print(data_path)
+			dfX = pandas.read_csv(data_path, sep=",",header=0)
+			data_test = dfX.as_matrix()
 
-			with open("./../../testCases/testSvmClassifier_"+file.split(".")[0]+".csv","w") as f:
-				header = "step,trans_type,amount,nameOrig,oldbalanceOrg,nameDest,oldbalanceDest,accountType,isFraud,isFlaggedFraud"
-				f.write(header + "\n" + "".join(lines))
+			X = removeLabels(data_test[:-1])
+			y = data_test[-1]
+
+			if os.path.exists(os.path.join(config.svmClassifier.model_path,file.split(".")[0]+".dat")):
+				clf = pickle.load(open(os.path.join(config.svmClassifier.model_path,file.split(".")[0]+".dat"), "rb"))
+
+				preds = clf.predict(X)		
+				print(y,preds)
+				f1 = f1_score(y.astype(int), preds.astype(int))
+				print("f1 score")
+				print(f1)
+			else:
+				preds = np.zeros(y.shape)	
+				print(y,preds)
+				f1 = f1_score(y.astype(int), preds.astype(int))
+				print("f1 score")
+				print(f1)
+
+			tested = np.concatenate((X,np.expand_dims(y,axis=1),np.expand_dims(preds,axis=1)), axis=1)
+			with open(config.svmClassifier.test_path_prefix+file.split(".")[0]+".csv", "w") as f:
+				writer = csv.writer(f)
+				writer.writerows(tested)
+
+				#this is to remove the newlines
+				with open(config.svmClassifier.test_path_prefix+file.split(".")[0]+".csv", "r") as f:
+					lines = f.readlines()
+					lines = [line for i,line in enumerate(lines)]
+
+				with open(config.svmClassifier.test_path_prefix+file.split(".")[0]+".csv","w") as f:
+					header = "step,trans_type,amount,nameOrig,oldbalanceOrg,nameDest,oldbalanceDest,accountType,isFraud,isFlaggedFraud"
+					f.write(header + "\n" + "".join(lines))

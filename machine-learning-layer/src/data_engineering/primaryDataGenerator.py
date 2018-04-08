@@ -4,11 +4,15 @@ import numpy as np
 import csv
 from random import randint
 
+import sys
+sys.path.append('../..')
+import config
+
 #####################################################################
 #form primary data
 ######################################################################
 
-data_path = "./../../datasets/filtered_data.csv"
+data_path = config.primaryDataGenerator.data_path
 
 print("Reading dataset")
 X = pandas.read_csv(data_path, sep=",",header=0)
@@ -57,15 +61,15 @@ for i in range(X.shape[0]):
 
 	csv_dataset_primary.append(arr)
 
-with open("./../../datasets/dataset_primary.csv", "w") as f:
+with open(config.primaryDataGenerator.out_path, "w") as f:
     writer = csv.writer(f)
     writer.writerows(csv_dataset_primary)
 
 #this is to remove the newlines
-with open("./../../datasets/dataset_primary.csv", "r") as f:
+with open(config.primaryDataGenerator.out_path, "r") as f:
 	lines = f.readlines()
-	lines = [line for i,line in enumerate(lines) if i%2==0]
+	lines = [line for i,line in enumerate(lines)]
 
-with open("./../../datasets/dataset_primary.csv","w") as f:
+with open(config.primaryDataGenerator.out_path,"w") as f:
 	header = "step,trans_type,amount,nameOrig,oldbalanceOrg,nameDest,oldbalanceDest,accountType,isFraud,isFlaggedFraud"
 	f.write(header + "\n" + "".join(lines))
