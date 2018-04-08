@@ -4,7 +4,11 @@ import numpy as np
 import csv
 from random import randint
 
-data_path = "./../../datasets/golden data source - paysim1/PS_20174392719_1491204439457_log.csv"
+import sys
+sys.path.append('../..')
+import config
+
+data_path = config.filteredDataGenerator.data_path
 
 print("Reading dataset...")
 X = pandas.read_csv(data_path, sep=",",header=0)
@@ -48,15 +52,20 @@ for name in X[:,nameDestCol]:
 countArr = []
 count = 0
 for attr, value in nameCount.items():
-	if value>40:
-		countArr.append(value)
-		count += 1
+	if config.train:
+		if value>40:
+			countArr.append(value)
+			count += 1
+	else:
+		if value>30 and value<40:
+			countArr.append(value)
+			count += 1
 
 median = np.median(countArr)
-# print("median above 40")
-# print(median)
-# print("count")
-# print(count)
+print("median above threshold")
+print(median)
+print("count")
+print(count)
 
 ###################################################################
 #form the dataset for above median
@@ -65,16 +74,21 @@ median = np.median(countArr)
 csv_golden_data = []
 
 for i in range(X.shape[0]):
-	if nameCount.get(X[i,3],-1) > 40 or nameCount.get(X[i,6],-1) > 40:
-		csv_golden_data.append(X[i,:])
+	if config.train:
+		if nameCount.get(X[i,3],-1) > 40 or nameCount.get(X[i,6],-1) > 40:
+			csv_golden_data.append(X[i,:])
+	else:
+		if (nameCount.get(X[i,3],-1) > 30 and nameCount.get(X[i,3],-1) < 40) \
+		or (nameCount.get(X[i,6],-1) > 30 and nameCount.get(X[i,6],-1) < 40):
+			csv_golden_data.append(X[i,:])
 
-with open("./../../datasets/filtered_data.csv", "w") as f:
+with open(config.filteredDataGenerator.out_path, "w") as f:
     writer = csv.writer(f)
     writer.writerows(csv_golden_data)
 
-with open("./../../datasets/filtered_data.csv", "r") as f:
+with open(config.filteredDataGenerator.out_path, "r") as f:
 	lines = f.readlines()
 	lines = [line for i,line in enumerate(lines) if i%2==0]
 
-	with open("./../../datasets/filtered_data.csv","w") as f1:
+	with open(config.filteredDataGenerator.out_path,"w") as f1:
 		f1.write("".join(lines))

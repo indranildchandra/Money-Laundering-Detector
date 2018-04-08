@@ -12,8 +12,12 @@ import os
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import Imputer
 
+import sys
+sys.path.append('../..')
+import config
+
 #read training data
-dataframeX = pandas.read_csv('./../../datasets/dataset_secondary.csv', sep=",",header=0)
+dataframeX = pandas.read_csv(config.featureRanker.data_path, sep=",",header=0)
 col_names = list(dataframeX.columns.values)
 
 #convert to matrix for input
@@ -29,13 +33,18 @@ def removeNulls(X, col):
 		if type(X[i,col]) is float and np.isnan(X[i,col]):
 			X[i,col] = 'NA'
 
-#train the model
-model = tree.DecisionTreeClassifier()
-model.fit(X,Y.astype(int))
+if config.train:
+	#train the model
+	model = tree.DecisionTreeClassifier()
+	model.fit(X,Y.astype(int))
 
-#save the model
-pickle.dump(model, open("./../../models/tree_classifier_model.dat", "wb"))
-print("tree_classifier_model.dat saved in models folder")
+	#save the model
+	with open(config.featureRanker.model_path, "wb") as f:
+		pickle.dump(model, f)
+	print("tree_classifier_model.dat saved in models folder")
+else:
+	with open(config.featureRanker.model_path, "rb") as f:
+		model = pickle.load(f)
 
 feature_imp = model.feature_importances_
 
